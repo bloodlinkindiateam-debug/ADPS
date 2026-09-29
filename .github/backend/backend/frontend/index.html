@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>ADPS — Airline Disruption Recovery</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #eef2f7;
+    color: #111827;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 25px;
+}
+
+.header {
+    background: #111827;
+    color: white;
+    padding: 30px;
+    border-radius: 18px;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    margin: 0;
+}
+
+.header p {
+    color: #d1d5db;
+}
+
+.panel {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.06);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, 1fr);
+    gap: 15px;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 7px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+}
+
+label {
+    font-weight: bold;
+}
+
+button {
+    border: 0;
+    padding: 13px 20px;
+    border-radius: 9px;
+    background: #111827;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: .9;
+}
+
+.result {
+    display: none;
+}
+
+.metrics {
+    display: grid;
+    grid-template-columns:
+        repeat(4, 1fr);
+    gap: 15px;
+}
+
+.metric {
+    background: #f3f4f6;
+    padding: 18px;
+    border-radius: 12px;
+}
+
+.metric h2 {
+    margin: 8px 0 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #111827;
+    color: white;
+    padding: 11px;
+    text-align: left;
+}
+
+td {
+    padding: 11px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.notice {
+    background: #fff7ed;
+    color: #9a3412;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.status {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+@media(max-width: 800px) {
+
+    .grid,
+    .metrics {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<h1>✈️ ADPS</h1>
+
+<p>
+Airline Disruption & Recovery Planning System
+</p>
+
+<p>
+Prototype / Synthetic Scenario Analysis
+</p>
+
+</div>
+
+
+<div class="panel">
+
+<h2>⚙️ Run Recovery Scenario</h2>
+
+<div class="grid">
+
+<div>
+
+<label>Airline Code</label>
+
+<input
+    id="airline"
+    value="NA"
+    maxlength="10"
+>
+
+</div>
+
+
+<div>
+
+<label>Disrupted Flights</label>
+
+<input
+    id="flights"
+    type="number"
+    value="20"
+    min="0"
+>
+
+</div>
+
+
+<div>
+
+<label>Delay Severity</label>
+
+<input
+    id="delay"
+    type="number"
+    value="1.5"
+    min="0"
+    step="0.1"
+>
+
+</div>
+
+
+<div>
+
+<label>Rebooking Factor</label>
+
+<input
+    id="rebooking"
+    type="number"
+    value="1.2"
+    min="0"
+    step="0.1"
+>
+
+</div>
+
+</div>
+
+<br>
+
+<button onclick="runScenario()">
+Run Scenario
+</button>
+
+<div
+    id="status"
+    class="status">
+</div>
+
+</div>
+
+
+<div
+    id="result"
+    class="panel result">
+
+<h2>📊 Recovery Result</h2>
+
+<div
+    id="metrics"
+    class="metrics">
+</div>
+
+</div>
+
+
+<div class="panel">
+
+<h2>📚 Scenario History</h2>
+
+<button onclick="loadHistory()">
+Refresh History
+</button>
+
+<br><br>
+
+<div style="overflow-x:auto;">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>ID</th>
+<th>Created</th>
+<th>Flights</th>
+<th>Delay</th>
+<th>Rebooking</th>
+<th>Strategy</th>
+<th>Score</th>
+
+</tr>
+
+</thead>
+
+<tbody id="history">
+
+<tr>
+
+<td colspan="7">
+No data loaded.
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<div class="panel">
+
+<h2>📈 Analytics</h2>
+
+<button onclick="loadAnalytics()">
+Refresh Analytics
+</button>
+
+<div
+    id="analytics"
+    style="margin-top:20px;">
+</div>
+
+</div>
+
+
+<div class="notice">
+
+⚠️ Prototype notice:
+scenario values are synthetic and illustrative.
+They are not real airline operational records.
+
+</div>
+
+</div>
+
+
+<script>
+
+/*
+============================================================
+ADPS FRONTEND
+IMPORTANT:
+Replace this value after backend deployment.
+============================================================
+*/
+
+const API_BASE =
+    "YOUR_BACKEND_URL";
+
+
+function getAirline() {
+
+    return document
+        .getElementById("airline")
+        .value
+        .trim()
+        .toUpperCase();
+
+}
+
+
+async function runScenario() {
+
+    const status =
+        document.getElementById("status");
+
+    status.innerText =
+        "Running scenario...";
+
+
+    const payload = {
+
+        airline_code: getAirline(),
+
+        disrupted_flights:
+            Number(
+                document.getElementById("flights").value
+            ),
+
+        delay_severity:
+            Number(
+                document.getElementById("delay").value
+            ),
+
+        rebooking_factor:
+            Number(
+                document.getElementById("rebooking").value
+            )
+
+    };
+
+
+    try {
+
+        const response = await fetch(
+            `${API_BASE}/api/scenarios/run`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify(payload)
+            }
+        );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Scenario failed"
+            );
+
+        }
+
+
+        const s =
+            data.scenario;
+
+
+        document
+            .getElementById("result")
+            .style.display = "block";
+
+
+        document
+            .getElementById("metrics")
+            .innerHTML = `
+
+            <div class="metric">
+                <small>Strategy</small>
+                <h2>
+                    ${s.recommended_strategy}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Composite Score</small>
+                <h2>
+                    ${Number(
+                        s.composite_score
+                    ).toFixed(2)}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Estimated Cost</small>
+                <h2>
+                    ${Number(
+                        s.estimated_cost
+                    ).toFixed(0)}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Protected Pax</small>
+                <h2>
+                    ${Number(
+                        s.protected_passengers
+                    ).toFixed(0)}
+                </h2>
+            </div>
+
+            `;
+
+
+        status.innerText =
+            "✅ Scenario completed";
+
+
+        await loadHistory();
+        await loadAnalytics();
+
+    }
+
+    catch(error) {
+
+        status.innerText =
+            "❌ " + error.message;
+
+    }
+
+}
+
+
+async function loadHistory() {
+
+    const airline =
+        getAirline();
+
+
+    const table =
+        document.getElementById(
+            "history"
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/api/scenarios/history?airline_code=${encodeURIComponent(airline)}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.success) {
+
+            throw new Error(
+                "History loading failed"
+            );
+
+        }
+
+
+        const scenarios =
+            data.scenarios || [];
+
+
+        if (!scenarios.length) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        No scenarios saved.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        table.innerHTML =
+            scenarios.map(s => `
+
+            <tr>
+
+                <td>${s.id}</td>
+
+                <td>
+                    ${s.created_at}
+                </td>
+
+                <td>
+                    ${s.disrupted_flights}
+                </td>
+
+                <td>
+                    ${Number(
+                        s.delay_severity
+                    ).toFixed(1)}x
+                </td>
+
+                <td>
+                    ${Number(
+                        s.rebooking_factor
+                    ).toFixed(1)}x
+                </td>
+
+                <td>
+                    ${s.recommended_strategy}
+                </td>
+
+                <td>
+                    ${Number(
+                        s.composite_score
+                    ).toFixed(2)}
+                </td>
+
+            </tr>
+
+            `).join("");
+
+    }
+
+    catch(error) {
+
+        table.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    ❌ ${error.message}
+                </td>
+            </tr>
+        `;
+
+    }
+
+}
+
+
+async function loadAnalytics() {
+
+    const box =
+        document.getElementById(
+            "analytics"
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/api/scenarios/analytics?airline_code=${encodeURIComponent(getAirline())}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.success) {
+
+            throw new Error(
+                "Analytics unavailable"
+            );
+
+        }
+
+
+        box.innerHTML = `
+
+        <div class="metrics">
+
+            <div class="metric">
+                <small>Total Scenarios</small>
+                <h2>
+                    ${data.total_scenarios}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Disrupted Flights</small>
+                <h2>
+                    ${Number(
+                        data.total_disrupted_flights
+                    ).toFixed(0)}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Protected Passengers</small>
+                <h2>
+                    ${Number(
+                        data.total_protected_passengers
+                    ).toFixed(0)}
+                </h2>
+            </div>
+
+            <div class="metric">
+                <small>Average Score</small>
+                <h2>
+                    ${Number(
+                        data.average_composite_score
+                    ).toFixed(2)}
+                </h2>
+            </div>
+
+        </div>
+
+        `;
+
+    }
+
+    catch(error) {
+
+        box.innerHTML =
+            "❌ " + error.message;
+
+    }
+
+}
+
+</script>
+
+</body>
+
+</html>
